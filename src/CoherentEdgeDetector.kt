@@ -6,10 +6,10 @@ import java.util.*
     Edge Detector Class based on Algorithm by GradientShop
  */
 class CoherentEdgeDetector(val src: Mat) {
-    val magnitudes: Mat = Mat()
-    val angles: Mat = Mat()
-    val gradientX: Mat
-    val gradientY: Mat
+    public val magnitudes: Mat = Mat()
+    public val orientations: Mat = Mat()
+    val gradientX: Mat = Mat()
+    val gradientY: Mat = Mat()
     val normalizedMagnitudes: Mat
     val messages: Mat
     val edgeLength: Mat
@@ -18,15 +18,14 @@ class CoherentEdgeDetector(val src: Mat) {
         edgeLength = Mat(src.rows(),src.cols(),CvType.CV_32F, Scalar.all(Double.NaN))
         // Gray
         val gray = Mat()
-        Imgproc.cvtColor(src,gray, Imgproc.COLOR_RGB2GRAY)
+        Imgproc.cvtColor(src,gray, Imgproc.COLOR_BGR2GRAY)
         // Sobel
-        gradientX = Mat()
-        gradientY = Mat()
         Imgproc.Sobel(gray,gradientX, CvType.CV_32F,1,0)
         Imgproc.Sobel(gray,gradientY, CvType.CV_32F,0,1)
+        Core.cartToPolar(gradientX, gradientY, magnitudes, orientations)
         // Steerable Filter
-        val stf = SteerableFilter(gray)
-        stf.calcMagnitudesAndDominantAngles(magnitudes, angles)
+//        val stf = SteerableFilter(gray)
+//        stf.calcDominantOrientation(Mat(), orientations)
         // normalize magnitudes
         val roi = Rect()
         normalizedMagnitudes = magnitudes.mapDouble { y, x ->
@@ -111,7 +110,7 @@ class CoherentEdgeDetector(val src: Mat) {
     }
 
     fun calcEdgeOrientation(px: Int, py: Int): Double {
-        return angles.get(py,px)[0]
+        return orientations.get(py,px)[0]
     }
 
     inner class NeighbourInfo (
@@ -134,8 +133,8 @@ class CoherentEdgeDetector(val src: Mat) {
             this.theta = if (x < 0 || y < 0 || src.width() <= x || src.height() <= y) {
                 0.0
             } else {
-                val p = angles.get(py,px)[0]
-                val q = angles.get(x,y)[0]
+                val p = orientations.get(py,px)[0]
+                val q = orientations.get(x,y)[0]
                 val d = p-q
                 Math.exp(-(d*d)/PI_2_DIV_5)
             }
@@ -177,7 +176,7 @@ class CoherentEdgeDetector(val src: Mat) {
             return 0.0
         }
         var sum = 0.0
-        val ang = if (inverse) angles.get(y,x)[0] + Math.PI else angles.get(y,x)[0]
+        val ang = if (inverse) orientations.get(y,x)[0] + Math.PI else orientations.get(y,x)[0]
         for (q in getQs(x, y, ang)) {
             if (q.x < 0 || q.y < 0 || src.width() <= q.x || src.height() <= q.y) {
                 continue

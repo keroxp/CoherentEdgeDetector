@@ -2,6 +2,7 @@ import org.opencv.core.Core
 import org.opencv.core.CvType
 import org.opencv.core.Mat
 import org.opencv.core.Scalar
+import org.opencv.imgproc.Imgproc
 
 fun Mat.iterate(func: (y: Int, x: Int) -> Unit) {
     for (y in 0..height()-1) {
@@ -11,10 +12,24 @@ fun Mat.iterate(func: (y: Int, x: Int) -> Unit) {
     }
 }
 
+fun Mat.to(code: Int): Mat {
+    val ret = Mat()
+    Imgproc.cvtColor(this,ret, code)
+    return ret
+}
+
 fun Mat.mapDouble(func: (y: Int, x: Int) -> Double): Mat {
     val ret = Mat(rows(),cols(),CvType.CV_32F)
     iterate { y, x ->
         ret.put(y,x,func(y,x))
+    }
+    return ret
+}
+
+fun Mat.mapDoubleArray(func: (y: Int, x: Int) -> DoubleArray): Mat {
+    val ret = Mat(rows(),cols(),type())
+    iterate { y, x ->
+        ret.put(y,x,*func(y,x))
     }
     return ret
 }

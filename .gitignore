@@ -3,10 +3,7 @@ out
 build
 .gradle
 tmp
-.idea/libraries
-.idea/workspace.xml
-.idea/uiDesigner.xml
-.idea/copyright
-.idea/misc.xml
-.idea/vcs.xml
-.idea/compiler.xml
+.idea
+!.idea/.name
+!.idea/gradle.xml
+

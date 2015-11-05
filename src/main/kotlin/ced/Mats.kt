@@ -1,5 +1,8 @@
+package ced
 import org.opencv.core.Core
 import org.opencv.core.Mat
+import org.opencv.core.Size
+import org.opencv.imgproc.Imgproc
 import java.util.*
 
 object Mats {
@@ -21,5 +24,12 @@ object Mats {
         }
         Core.vconcat(rows, ret)
         return ret
+    }
+    fun resize(src: Mat, dst: Mat, size: Double) {
+        Imgproc.resize(src,src,if (src.width() > src.height()) {
+            Size(size, size * src.height() / src.width())
+        } else {
+            Size(size * src.width() / src.height(), size)
+        }, 1.0, 1.0, Imgproc.INTER_CUBIC)
     }
 }

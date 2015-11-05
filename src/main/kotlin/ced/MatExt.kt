@@ -1,3 +1,4 @@
+package ced
 import org.opencv.core.Core
 import org.opencv.core.CvType
 import org.opencv.core.Mat
@@ -12,9 +13,15 @@ fun Mat.iterate(func: (y: Int, x: Int) -> Unit) {
     }
 }
 
+fun Mat.grayToBGR(): Mat {
+    val ret = Mat(rows(),cols(),CvType.CV_8UC3)
+    Imgproc.cvtColor(this,ret,Imgproc.COLOR_GRAY2BGR,3)
+    return ret
+}
+
 fun Mat.to(code: Int): Mat {
     val ret = Mat()
-    Imgproc.cvtColor(this,ret, code)
+    Imgproc.cvtColor(this,ret,code)
     return ret
 }
 
@@ -22,6 +29,14 @@ fun Mat.mapDouble(func: (y: Int, x: Int) -> Double): Mat {
     val ret = Mat(rows(),cols(),CvType.CV_32F)
     iterate { y, x ->
         ret.put(y,x,func(y,x))
+    }
+    return ret
+}
+
+fun Mat.mapByteArray(func: (y: Int, x: Int) -> ByteArray): Mat {
+    val ret = Mat(rows(),cols(),type())
+    iterate { y, x ->
+        ret.put(y,x, func(y,x))
     }
     return ret
 }

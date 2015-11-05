@@ -1,3 +1,4 @@
+package ced
 import org.opencv.core.Core
 import org.opencv.core.CvType
 import org.opencv.core.Mat
@@ -13,7 +14,7 @@ object Filters {
     }
     public fun mapTo8UGray(src: Mat): Mat {
         val mm = Core.minMaxLoc(src)
-        val ret = Mat()
+        val ret = src.clone()
         src.convertTo(ret,CvType.CV_8U, 255.0/(mm.maxVal-mm.minVal), -mm.minVal)
         return ret
     }

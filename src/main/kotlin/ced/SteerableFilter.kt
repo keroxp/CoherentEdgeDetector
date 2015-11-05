@@ -1,3 +1,4 @@
+package ced
 import org.opencv.core.*
 import org.opencv.imgproc.Imgproc
 

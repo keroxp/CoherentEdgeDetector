@@ -1,4 +1,6 @@
-package ced
+package ced.filter
+import ced.*
+import ced.timesAssign
 import org.opencv.core.*
 import org.opencv.imgproc.Imgproc
 
@@ -54,7 +56,7 @@ class SteerableFilter (val src: Mat) {
         orientation *= .5
     }
     fun calcKernel(func: (Double) -> Double, width: Int = 2, spacing: Double = 0.67): Mat {
-        val ret = Mat(1,width*2+1,CvType.CV_32F, Scalar.all(0.0))
+        val ret = Mat(1, width * 2 + 1, CvType.CV_32F, Scalar.all(0.0))
         for (i in -width..width) {
             ret.put(0,i+width,func(i.toDouble())*spacing)
         }
@@ -107,5 +109,23 @@ class SteerableFilter (val src: Mat) {
     }
     fun kH2d (theta: Double): Double {
         return -Math.pow(Math.sin(theta),3.0)
+    }
+    fun steer(theta: Double, g2: Mat, h2: Mat) {
+        // Create the steering coefficients, then compute G2 and H2 at orientation theta:
+        val ct = Math.cos(theta)
+        val ct2 = ct*ct
+        val ct3 = ct2*ct
+        val st = Math.sin(theta)
+        val st2 = st*st
+        val st3 = st2*st
+        val ga = ct2
+        val gb = (-2.0 * ct * st)
+        val gc = st2
+        val ha = ct3
+        val hb = (-3.0 * ct2 * st)
+        val hc = (3.0 * ct * st2)
+        val hd = (-st3)
+        (ga * g2a + gb * g2b + gc * g2c).copyTo(g2)
+        (ha * h2a + hb * h2b + hc * h2c + hd * h2d).copyTo(h2);
     }
 }

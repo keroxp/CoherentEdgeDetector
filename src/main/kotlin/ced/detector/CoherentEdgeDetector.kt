@@ -1,4 +1,6 @@
-package ced
+package ced.detector
+import ced.iterate
+import ced.mapDouble
 import org.opencv.core.*
 import org.opencv.imgproc.Imgproc
 import java.util.*
@@ -12,11 +14,13 @@ class CoherentEdgeDetector(val src: Mat) {
     val gradientX: Mat = Mat()
     val gradientY: Mat = Mat()
     val normalizedMagnitudes: Mat
-    val messages: Mat
+    val messages0: Mat
+    val messages1: Mat
     val edgeLength: Mat
     init {
-        messages = Mat(src.rows(),src.cols(),CvType.CV_32F, Scalar.all(Double.NaN))
-        edgeLength = Mat(src.rows(),src.cols(),CvType.CV_32F, Scalar.all(Double.NaN))
+        messages0 = Mat(src.rows(), src.cols(), CvType.CV_32F, Scalar.all(Double.NaN))
+        messages1 = Mat(src.rows(), src.cols(), CvType.CV_32F, Scalar.all(Double.NaN))
+        edgeLength = Mat(src.rows(), src.cols(), CvType.CV_32F, Scalar.all(Double.NaN))
         // Gray
         val gray = Mat()
         Imgproc.cvtColor(src,gray, Imgproc.COLOR_BGR2GRAY)
@@ -29,7 +33,7 @@ class CoherentEdgeDetector(val src: Mat) {
 //        stf.calcDominantOrientation(Mat(), orientations)
         // normalize magnitudes
         val roi = Rect()
-        normalizedMagnitudes = magnitudes.mapDouble { y, x ->
+        normalizedMagnitudes = magnitudes.mapDouble { y, x, self ->
             if (x < 2 || y < 2 || magnitudes.width()-2 <= x || magnitudes.height()-2 <= y) {
                 0.0
             } else {
@@ -51,7 +55,7 @@ class CoherentEdgeDetector(val src: Mat) {
     }
 
     public fun calc(): Mat {
-        val ret = Mat(src.rows(),src.cols(),CvType.CV_32F)
+        val ret = Mat(src.rows(), src.cols(), CvType.CV_32F)
         ret.iterate { y, x ->
             val s = calcSalience(x,y)
             ret.put(y,x,s)
@@ -114,7 +118,7 @@ class CoherentEdgeDetector(val src: Mat) {
         return orientations.get(py,px)[0]
     }
 
-    inner class NeighbourInfo (
+    inner class BiLinearPixel(
             px: Int,
             py: Int,
             rx: Double,
@@ -135,22 +139,22 @@ class CoherentEdgeDetector(val src: Mat) {
                 0.0
             } else {
                 val p = orientations.get(py,px)[0]
-                val q = orientations.get(x,y)[0]
+                val q = orientations.get(y,x)[0]
                 val d = p-q
                 Math.exp(-(d*d)/PI_2_DIV_5)
             }
         }
     }
     val r2 = 1.41421356237
-    fun getQs(px: Int, py: Int, angle: Double): List<NeighbourInfo> {
-        val ret = ArrayList<NeighbourInfo>(4)
+    fun getQs(px: Int, py: Int, angle: Double): List<BiLinearPixel> {
+        val ret = ArrayList<BiLinearPixel>(4)
         val qx = px + r2*Math.cos(angle)
         val qy = py + r2*Math.sin(angle)
         try {
-            ret.add(NeighbourInfo(px, py, qx, qy, true, true))
-            ret.add(NeighbourInfo(px, py, qx, qy, true, false))
-            ret.add(NeighbourInfo(px, py, qx, qy, false, true))
-            ret.add(NeighbourInfo(px, py, qx, qy, false, false))
+            ret.add(BiLinearPixel(px, py, qx, qy, true, true))
+            ret.add(BiLinearPixel(px, py, qx, qy, true, false))
+            ret.add(BiLinearPixel(px, py, qx, qy, false, true))
+            ret.add(BiLinearPixel(px, py, qx, qy, false, false))
             return ret
         } catch (e: NullPointerException) {
             return emptyList()
@@ -169,6 +173,7 @@ class CoherentEdgeDetector(val src: Mat) {
 
     fun messagePassingInternal(x: Int, y:Int, inverse: Boolean, itrCnt: Int): Double {
         // 計算済みの場合はそれを返す
+        val messages = if (inverse) messages1 else messages0
         var ret = messages.get(y,x)[0]
         if (!ret.isNaN()) {
             return ret
@@ -177,7 +182,7 @@ class CoherentEdgeDetector(val src: Mat) {
             return 0.0
         }
         var sum = 0.0
-        val ang = if (inverse) orientations.get(y,x)[0] + Math.PI else orientations.get(y,x)[0]
+        val ang = (if (inverse) orientations.get(y,x)[0] + Math.PI else orientations.get(y,x)[0])
         for (q in getQs(x, y, ang)) {
             if (q.x < 0 || q.y < 0 || src.width() <= q.x || src.height() <= q.y) {
                 continue

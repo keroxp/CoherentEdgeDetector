@@ -1,18 +1,30 @@
 package ced
+import ced.label.Labeler
+import ced.detector.CoherentEdgeDetector
+import ced.detector.CoherentEdgeDetector2
+import ced.util.Mats
+import ced.util.Filters
 import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import java.io.File
+import java.util.*
 import kotlin.text.Regex
 
 fun main(args: Array<String>) {
     val lib = File("/usr/local/Cellar/opencv3/3.0.0/share/OpenCV/java/lib"+Core.NATIVE_LIBRARY_NAME+".dylib")
     System.load(lib.absolutePath)
-    val o0 = outdir("tmp/proc0")
-    val o1 = outdir("tmp/proc1")
-    imageFiles("res").forEach { f ->
-        proc0(o0,f)
-        proc1(o1,f)
+    doProc(1, File("res/cheetah"))
+}
+
+fun doProc(i: Int, res: File, size: Double = 256.0) {
+    val o = outdir("tmp/proc$i/${res.name}")
+    imageFiles(res.absolutePath).forEach { f ->
+        when (i) {
+            0 -> proc0(o,f,size)
+            1 -> proc1(o,f,size)
+            2 -> proc2(o,f,size)
+        }
     }
 }
 
@@ -27,54 +39,57 @@ fun outdir(path: String, clear: Boolean = true): File {
     return outdir
 }
 
-fun proc0 (outdir: File, file: File) {
+fun proc0 (outdir: File, file: File, size: Double) {
     val src = Imgcodecs.imread(file.absolutePath)
-    val size = 256.0
-    Mats.resize(src,src,size)
+    Mats.resize(src,size)
     val ced = CoherentEdgeDetector(src)
-//    val salience = Filters.mapTo8UGray(ced.calc())
     val salience = ced.calc()
     val mm = Core.minMaxLoc(salience)
-    salience.convertTo(salience,CvType.CV_8UC3, 255/(mm.maxVal-mm.minVal),-mm.minVal)
+    salience.convertTo(salience,CvType.CV_8U, 255/(mm.maxVal-mm.minVal),-mm.minVal)
+    val el = Filters.mapTo8UGray(ced.edgeLength)
+    val out1 = Mat()
+    Core.hconcat(listOf(el,salience),out1)
+    Imgcodecs.imwrite("${outdir.path}/len_sal_${file.name}",out1)
     val angcolor = Mat()
     Filters.angleToHSV(ced.orientations).to(Imgproc.COLOR_HSV2BGR).copyTo(angcolor, salience)
-    Imgcodecs.imwrite("${outdir.path}/sal_${file.name}",salience)
     val out = Mats.concatMatrix(3, src,salience.grayToBGR(), angcolor)
     Imgcodecs.imwrite("${outdir.path}/steer_${file.name}",out)
     print("${file.name} has been done.\n")
 }
 
-fun proc1(outdir: File , file: File) {
+fun proc1(outdir: File , file: File, size: Double) {
     val src = Imgcodecs.imread(file.absolutePath)
-    val size = 256.0
-    Mats.resize(src,src,size)
-    // Mean-Shift
-    val ms = src.clone()
-    Imgproc.pyrMeanShiftFiltering(src,ms,15.0,20.0)
-    // Gray
-    val gray = src.clone()
-    Imgproc.cvtColor(ms,gray,Imgproc.COLOR_RGB2GRAY)
-    // Sobel
-    val sobelX = Mat()
-    val sobelY = Mat()
-    Imgproc.Sobel(gray,sobelX,CvType.CV_32F,1,0)
-    Imgproc.Sobel(gray,sobelY,CvType.CV_32F,0,1)
-    val mag = Mat()
-    val ang = Mat()
-    val imgSobel = src.clone()
-    Core.cartToPolar(sobelX,sobelY,mag,ang)
-    val minMax = Core.minMaxLoc(mag)
-    mag.convertTo(imgSobel,CvType.CV_8U, 255.0/(minMax.maxVal-minMax.minVal), -minMax.minVal)
-    val cohLine = imgSobel.clone()
-    Imgproc.threshold(imgSobel,cohLine,50.0,255.0, Imgproc.THRESH_TOZERO)
-    // Angle
-    val angcolor = Mat()
-    Filters.angleToHSV(ang).to(Imgproc.COLOR_HSV2BGR).copyTo(angcolor,cohLine)
-    val out = Mats.concatMatrix(3,
-            src, ms, gray.to(Imgproc.COLOR_GRAY2BGR),
-            imgSobel.to(Imgproc.COLOR_GRAY2BGR), cohLine.to(Imgproc.COLOR_GRAY2BGR), angcolor
-    )
-    Imgcodecs.imwrite("${outdir.path}/${file.name}",out)
+    Mats.resize(src,size)
+    val ced2 = CoherentEdgeDetector2(src)
+    ced2.detect()
+    val label = Mat()
+    val centroids = Mat()
+    val stats = Mat()
+    val numLabs = Imgproc.connectedComponentsWithStats(ced2.cohLine, label, stats, centroids)
+    val colored = label.mapByteArray { y, x, mat ->
+        val h = (label.get(y,x)[0]*180/255).toByte()
+        val sv = (if (h == 0.toByte()) 0 else 255).toByte()
+        byteArrayOf(h,sv,sv)
+    }.to(Imgproc.COLOR_HSV2BGR)
+    val labeler = Labeler(ced2.cohLine,ced2.orientation)
+    Imgcodecs.imwrite("${outdir.path}/label_${numLabs}_${file.name}", colored)
+//    Imgcodecs.imwrite("${outdir.path}/${file.name}",ced2.createResultInfo())
     print("${file.name} has been done.\n")
 }
 
+fun proc2 (outdir: File, file: File, size: Double) {
+    val src = Imgcodecs.imread(file.absolutePath).resize(256.0)
+    val gray = src.to(Imgproc.COLOR_BGR2GRAY)
+    val edge = Mat()
+    Imgproc.Canny(gray, edge, 50.0, 100.0, 3, true)
+    val contours = ArrayList<MatOfPoint>()
+    val hierarchy = Mat()
+    Imgproc.findContours(edge,contours,hierarchy,Imgproc.RETR_TREE,Imgproc.CHAIN_APPROX_SIMPLE,Point())
+    val out = Mat.zeros(edge.size(),CvType.CV_8UC3)
+    val white = Scalar.all(255.0)
+    for (i in 0..contours.size-1) {
+        Imgproc.drawContours(out,contours,i, white, 1, Imgproc.LINE_AA, hierarchy, 0, Point())
+    }
+    Imgcodecs.imwrite("$outdir/${file.name}", Mats.concatMatrix(3,src,out))
+    print("${file.name}, edges: ${contours.size}\n")
+}

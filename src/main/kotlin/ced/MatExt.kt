@@ -45,6 +45,14 @@ fun Mat.mergeTo(dst: Mat): Mat {
     return dst
 }
 
+fun Mat.mapInt(func: (y: Int, x: Int, self: Mat) -> Int): Mat {
+    val ret = Mat(rows(), cols(), CvType.CV_32S)
+    iterate { y, x ->
+        ret.put(y,x, intArrayOf(func(y,x,this)))
+    }
+    return ret
+}
+
 fun Mat.mapDouble(func: (y: Int, x: Int, self: Mat) -> Double): Mat {
     val ret = Mat(rows(), cols(), CvType.CV_32F)
     iterate { y, x ->

@@ -16,17 +16,25 @@ class Label (
         public val pixels: Set<Point>,
         public val boundaries: Set<PixelNeighbour>, //  他のラベルと接しているピクセルの集合
         public val bounds: Rect,
-        public val direction: Direction
+        public val direction: Int,
+        public val coherency: Double
 ) {
     public val neighbours: HashSet<Int> = HashSet()
     public val labelRelations: HashSet<LabelRelation> = HashSet()
+    public val original: Mat
     public val bitmap: BigInteger
+    public val area: Int
+        get () {
+            return pixels.size
+        }
     init {
+        assert(pixels.size > 0)
         // 線画をビットマップに
-        val line = Mat.zeros(bounds.height,bounds.width, CvType.CV_8U)
+        val line = Mat.zeros(bounds.height+1,bounds.width+1, CvType.CV_8U)
         for (p in pixels) {
             line.put(p.y-bounds.top, p.x-bounds.left, 255.0)
         }
+        original = line
         // 中央揃えして64x64へリサイズ
         val norm = Mat.zeros(64,64, CvType.CV_8U)
         val dst = Mat()
@@ -50,7 +58,10 @@ class Label (
     }
     public fun toMat(): Mat {
         val ret = Mat.zeros(64,64,CvType.CV_8U)
-        bitmap.toString(2).forEachIndexed { i, c ->
+        val bits = bitmap.toString(2)
+        val s = 64*64-bits.length
+        for (i in s..4095) {
+            val c = bits[i-s]
             if (c == '1') {
                 val y = (i/64).toInt()
                 val x = i%64

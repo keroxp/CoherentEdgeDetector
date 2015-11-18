@@ -14,7 +14,7 @@ import kotlin.text.Regex
 fun main(args: Array<String>) {
     val lib = File("/usr/local/Cellar/opencv3/3.0.0/share/OpenCV/java/lib"+Core.NATIVE_LIBRARY_NAME+".dylib")
     System.load(lib.absolutePath)
-    doProc(1, File("res/cheetah"))
+    doProc(1, File("res/witch"))
 }
 
 fun doProc(i: Int, res: File, size: Double = 256.0) {
@@ -61,19 +61,11 @@ fun proc1(outdir: File , file: File, size: Double) {
     val src = Imgcodecs.imread(file.absolutePath)
     Mats.resize(src,size)
     val ced2 = CoherentEdgeDetector2(src)
-    ced2.detect()
-    val label = Mat()
-    val centroids = Mat()
-    val stats = Mat()
-    val numLabs = Imgproc.connectedComponentsWithStats(ced2.cohLine, label, stats, centroids)
-    val colored = label.mapByteArray { y, x, mat ->
-        val h = (label.get(y,x)[0]*180/255).toByte()
-        val sv = (if (h == 0.toByte()) 0 else 255).toByte()
-        byteArrayOf(h,sv,sv)
-    }.to(Imgproc.COLOR_HSV2BGR)
     val labeler = Labeler(ced2.cohLine,ced2.orientation)
-    Imgcodecs.imwrite("${outdir.path}/label_${numLabs}_${file.name}", colored)
-//    Imgcodecs.imwrite("${outdir.path}/${file.name}",ced2.createResultInfo())
+    val res = labeler.doLabeling(minLength = 10, minCoherency = 0.75)
+    val lines = res.sortedByDescending { r -> r.coherency }.map { r -> r.toMat() }.toTypedArray()
+    val matrix = Mats.concatMatrix(10,*lines)
+    Imgcodecs.imwrite("${outdir.path}/coh_${file.nameWithoutExtension}.jpg", matrix)
     print("${file.name} has been done.\n")
 }
 

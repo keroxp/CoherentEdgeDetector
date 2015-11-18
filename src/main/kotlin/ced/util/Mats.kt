@@ -16,7 +16,11 @@ object Mats {
             val row = if (range.endInclusive < mats.size) {
                 mats.slice(range)
             } else {
-                mats.slice(IntRange(i,mats.size-1))
+                val _row = ArrayList(mats.slice(IntRange(i,mats.size-1)))
+                for (j in 0..maxWidth-_row.size-1) {
+                    _row.add(Mat.zeros(mats[0].size(),mats[0].type()))
+                }
+                _row
             }
             var buf = Mat()
             Core.hconcat(row,buf)

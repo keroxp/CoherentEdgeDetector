@@ -3,6 +3,7 @@ package label
 import ced.detector.CoherentEdgeDetector2
 import ced.label.Labeler
 import ced.resize
+import ced.util.Mats
 import org.junit.BeforeClass
 import org.opencv.core.Core
 import org.opencv.imgcodecs.Imgcodecs
@@ -32,11 +33,11 @@ class LabelerTest {
 //        }
 //    }
     @Test fun test2(): Unit {
-        val src = Imgcodecs.imread("res/test/forest.jpg").resize(256.0)
+        val src = Imgcodecs.imread("res/test/bullbones.png").resize(256.0)
         val ced = CoherentEdgeDetector2(src)
         val labeler = Labeler(ced.magnitude,ced.orientation)
-        val minLength = 30
-        val minCoherency = 0.8
+        val minLength = 10
+        val minCoherency = 0.5
         val res = labeler.doLabeling(minLength = minLength, minCoherency = minCoherency)
         val out = File("tmp/test2")
         out.deleteRecursively()
@@ -50,9 +51,9 @@ class LabelerTest {
             assertTrue(l.coherency >= minCoherency)
             assertEquals(64,m.rows())
             assertEquals(64,m.cols())
-            Imgcodecs.imwrite("${out.path}/line_${i}_org.bmp",l.original)
-            Imgcodecs.imwrite("${out.path}/line_${i}_${l.coherency}_.bmp",m)
             i++
         }
+        val lines = cohs.map { c -> c.toMat() }.toTypedArray()
+        Imgcodecs.imwrite("${out.path}/lines_of_${lines.size}.jpg",Mats.concatMatrix(10,*lines))
     }
 }

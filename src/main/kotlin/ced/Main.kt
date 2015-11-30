@@ -8,13 +8,14 @@ import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import java.io.File
+import java.sql.DriverManager
 import java.util.*
 import kotlin.text.Regex
 
 fun main(args: Array<String>) {
     val lib = File("/usr/local/Cellar/opencv3/3.0.0/share/OpenCV/java/lib"+Core.NATIVE_LIBRARY_NAME+".dylib")
     System.load(lib.absolutePath)
-    doProc(1, File("res/witch"))
+    CreateDB.exec(imageFiles("res/test"), "test")
 }
 
 fun doProc(i: Int, res: File, size: Double = 256.0) {
@@ -57,6 +58,7 @@ fun proc0 (outdir: File, file: File, size: Double) {
     print("${file.name} has been done.\n")
 }
 
+
 fun proc1(outdir: File , file: File, size: Double) {
     val src = Imgcodecs.imread(file.absolutePath)
     Mats.resize(src,size)
@@ -85,3 +87,4 @@ fun proc2 (outdir: File, file: File, size: Double) {
     Imgcodecs.imwrite("$outdir/${file.name}", Mats.concatMatrix(3,src,out))
     print("${file.name}, edges: ${contours.size}\n")
 }
+

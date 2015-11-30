@@ -4,6 +4,7 @@ import ced.detector.CoherentEdgeDetector2
 import ced.label.Labeler
 import ced.resize
 import ced.util.Mats
+import ced.label.Labels
 import org.junit.BeforeClass
 import org.opencv.core.Core
 import org.opencv.imgcodecs.Imgcodecs
@@ -47,13 +48,15 @@ class LabelerTest {
         for (l in cohs) {
             val m = l.toMat()
             assertTrue(l.area > 0)
-            assertTrue(Math.max(l.bounds.width,l.bounds.height) >= minLength)
+            assertTrue(l.length >= minLength)
             assertTrue(l.coherency >= minCoherency)
             assertEquals(64,m.rows())
             assertEquals(64,m.cols())
             i++
         }
         val lines = cohs.map { c -> c.toMat() }.toTypedArray()
+        val pack = Labels.packOriginalImages(res, 1024)
+        Imgcodecs.imwrite("${out.path}/lines_packed.jpg", pack)
         Imgcodecs.imwrite("${out.path}/lines_of_${lines.size}.jpg",Mats.concatMatrix(10,*lines))
     }
 }

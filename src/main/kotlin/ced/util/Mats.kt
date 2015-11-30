@@ -2,6 +2,7 @@ package ced.util
 import ced.iterate
 import org.opencv.core.Core
 import org.opencv.core.Mat
+import org.opencv.core.Scalar
 import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
 import java.util.*
@@ -30,6 +31,36 @@ object Mats {
         Core.vconcat(rows, ret)
         return ret
     }
+    fun extend (mat: Mat, maxWidth: Int = mat.width(), maxHeight: Int = mat.height(), fillValue: Scalar): Mat {
+        val ret = Mat(maxHeight,maxWidth,mat.type(), fillValue)
+        mat.iterate { y, x -> ret.put(y,x,*mat.get(y,x)) }
+        return ret
+    }
+    fun appendRight(base: Mat, append: Mat): Mat {
+        assert(base.height() == append.height())
+        val ret = Mat.zeros(base.rows(), base.cols()+append.cols(), base.type())
+        val sx = base.width()
+        base.iterate { y, x ->
+            ret.put(y,x,*base.get(y,x))
+        }
+        append.iterate { y, x ->
+            ret.put(y,sx+x,*append.get(y,x))
+        }
+        return ret
+    }
+    fun appendBottom(base: Mat, append: Mat): Mat {
+        assert(base.width() == append.width())
+        val ret = Mat.zeros(base.rows()+append.rows(), base.cols(), base.type())
+        val sy = base.height()
+        base.iterate { y, x ->
+            ret.put(y,x,*base.get(y,x))
+        }
+        append.iterate { y, x ->
+            ret.put(sy+y,x,*append.get(y,x))
+        }
+        return ret
+    }
+
     fun resize(src: Mat, size: Double, dst: Mat? = null): Mat {
         val ret = dst ?: src
         Imgproc.resize(src,ret,if (src.width() > src.height()) {

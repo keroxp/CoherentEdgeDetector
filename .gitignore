@@ -3,7 +3,10 @@ out
 build
 .gradle
 tmp
+res
 .idea
 !.idea/.name
 !.idea/gradle.xml
+db
+!db/createdb.sql
 

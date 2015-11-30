@@ -6,6 +6,13 @@ data class Rect (
         public var width: Int = 0,
         public var height: Int = 0
 ) {
+    enum class Corner {
+        LeftTop,
+        RightTop,
+        RightBottom,
+        LeftBottom
+    }
+    constructor(p: Point) : this(p.x,p.y)
     public val right: Int
         get () {
             return left + width
@@ -14,6 +21,22 @@ data class Rect (
         get () {
             return top + height
         }
+    public fun extend(p: Point) {
+        extend(p.x,p.y)
+    }
+    public val center: Point get () = Point(left+width*.5.toInt(),top+height*.5.toInt())
+    public val leftTop: Point get () = Point(left,top)
+    public val leftBottom: Point get () = Point(left,bottom)
+    public val rightTop: Point get () = Point(right,top)
+    public val rightBottom: Point get () = Point(right,bottom)
+    public fun corner(corner: Corner): Point {
+        return when (corner) {
+            Corner.LeftTop -> leftTop
+            Corner.LeftBottom -> leftBottom
+            Corner.RightBottom -> rightBottom
+            Corner.RightTop -> rightTop
+        }
+    }
     public fun extend(x: Int, y: Int) {
         if (x < this.left) {
             this.width += this.left-x

@@ -28,8 +28,10 @@ repositories {
 }
 
 dependencies {
+    compile 'mysql:mysql-connector-java:5.1.37'
     compile 'org.jetbrains.kotlin:kotlin-stdlib:0.1-SNAPSHOT'
     testCompile 'junit:junit:4.11'
+    compile 'com.google.guava:guava:18.0'
     compile files("/usr/local/Cellar/opencv3/3.0.0/share/OpenCV/java/opencv-300.jar")
 }
 

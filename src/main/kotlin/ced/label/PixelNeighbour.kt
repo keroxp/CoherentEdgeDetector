@@ -7,6 +7,7 @@ public data class PixelNeighbour(
         val dx: Int = 0,
         val dy: Int = 0
 ) {
+    public var label: Int = -1
     val x: Int
         get () {
             return pivot.x+dx

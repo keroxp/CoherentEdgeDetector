@@ -1,6 +1,7 @@
 package ced.filter
 import ced.*
 import ced.timesAssign
+import ced.util.Mats
 import org.opencv.core.*
 import org.opencv.imgproc.Imgproc
 
@@ -49,7 +50,7 @@ class SteerableFilter (val src: Mat) {
         val h2cc = h2c*h2c // h2c*
         val h2cd = h2c*h2d
         val h2dd = h2d*h2d // h2d*
-//        c1 = 0.5*(g2bb) + 0.25*(g2ac) + 0.375*(g2aa + g2cc) + 0.3125*(h2aa + h2dd) + 0.5625*(h2bb + h2cc) + 0.375*(h2ac + h2bd)
+        c1 = 0.5*(g2bb) + 0.25*(g2ac) + 0.375*(g2aa + g2cc) + 0.3125*(h2aa + h2dd) + 0.5625*(h2bb + h2cc) + 0.375*(h2ac + h2bd)
         c2 = 0.5*(g2aa - g2cc) + 0.46875*(h2aa - h2dd) + 0.28125*(h2bb - h2cc) + 0.1875*(h2ac - h2bd)
         c3 = (-1.0*g2ab) - g2bc - (0.9375*(h2cd + h2ab)) - (1.6875*(h2bc)) - (0.1875*(h2ad))
         Core.cartToPolar(c2,c3, strength, orientation)
@@ -127,5 +128,71 @@ class SteerableFilter (val src: Mat) {
         val hd = (-st3)
         (ga * g2a + gb * g2b + gc * g2c).copyTo(g2)
         (ha * h2a + hb * h2b + hc * h2c + hd * h2d).copyTo(h2);
+    }
+
+    // Steer filters at a single pixel:
+    fun steer(x: Int, y: Int, theta: Double): Pair<Double,Double>
+    {
+        // Create the steering coefficients, then compute G2 and H2 at orientation theta:
+        val ct = Math.cos(theta)
+        val ct2 = ct*ct
+        val ct3 = ct2*ct
+        val st = Math.sin(theta)
+        val st2 = st*st
+        val st3 = st2*st
+        val ga = ct2
+        val gb = (-2.0 * ct * st)
+        val gc = st2
+        val ha = ct3
+        val hb = (-3.0 * ct2 * st)
+        val hc = 3.0 * ct * st2
+        val hd = -st3
+        val g2 = ga * g2a.get(y,x)[0] + gb * g2b.get(y,x)[0] + gc * g2c.get(y,x)[0]
+        val h2 = ha * h2a.get(y,x)[0] + hb * g2b.get(y,x)[0] + hc * g2c.get(y,x)[0] + hd * h2d.get(y,x)[0]
+        return Pair(g2,h2)
+    }
+
+    fun phaseWeights(phase: Mat, phi: Double, signum: Boolean, k: Double): Mat
+    {
+        val ct = Mat()
+        val st = Mat()
+        var error = if (signum) {
+            Mats.abs(phase, Scalar(phi))
+        } else {
+            Mats.abs(Mats.abs(phase, Scalar(0.0)), Scalar(phi))
+        }
+        error = Mats.min(error, -(error-2.0*Math.PI))
+        Core.polarToCart(Mat(), error, ct, st);
+        val mask = Mat()
+        Core.compare(Mats.abs(error, Scalar(0.0)), Scalar(Math.PI*.5),mask,Core.CMP_GT)
+        val lambda = ct.mul(ct);
+        lambda.setTo(Scalar(0.0), mask)
+        return lambda
+    }
+
+    //  phase = arg(G2, H2) where arg(x + iy) = atan(y,x), (opencv return angles in [0..2pi])
+    //  0      = dark line
+    //  pi     = bright line
+    // +pi/2   = edge
+    // -pi/2   = edge
+    fun phaseEdge(e: Mat, phase: Mat, phi: Double, signum: Boolean, k : Double): Mat
+    {
+        val lambda = phaseWeights(phase, phi, signum, k);
+        return e.mul(lambda)
+    }
+
+    fun findEdges(e: Mat, phase: Mat, k: Double): Mat
+    {
+        return phaseEdge(e, phase, Math.PI*.5, false, k);
+    }
+
+    fun findDarkLines(e: Mat, phase: Mat, k: Double): Mat
+    {
+        return phaseEdge(e, phase, 0.0, true, k);
+    }
+
+    fun findBrightLines(e: Mat, phase: Mat, k: Double): Mat
+    {
+        return phaseEdge(e, phase, Math.PI*.5, true, k);
     }
 }

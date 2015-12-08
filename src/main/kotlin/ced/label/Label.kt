@@ -29,7 +29,7 @@ class Label (
         public val LABEL_NO = 255.0
     }
     public var neighbours: MutableSet<Label> = HashSet()
-    public val minHashes: HashMap<Int, Int> = HashMap()
+    public val minHashes: MutableSet<Sketch> = HashSet()
     public val original: Mat
     public val bitmap: BigInteger
     public var coherency: Double
@@ -77,22 +77,18 @@ class Label (
         }
         val hashFunc = Hashing.crc32c()
         for (n in 0..19) {
-            val sketch = ArrayList<Int>(3)
+            val hashes = ArrayList<Int>(3)
             for (k in 0..2) {
-                var min: Int? = null
+                var min = Int.MAX_VALUE
                 for (b in tmp) {
                     var h = hashFunc.hashString("$n-$k-$b",Charset.forName("UTF-8")).asInt()
-                    if (min == null) {
-                        min = h
-                    } else if (h < min) {
+                    if (h < min) {
                         min = h
                     }
                 }
-                sketch.add(min!!)
+                hashes.add(min)
             }
-            val joined = sketch.joinToString()
-            val sketchHash = hashFunc.hashString("$n-$joined",Charset.forName("UTF-8")).asInt()
-            minHashes.set(n,sketchHash)
+            minHashes.add(Sketch(n,hashes))
         }
     }
     public fun calcCoherency(): Double {
@@ -174,8 +170,8 @@ class Label (
         hash.put("label", index)
         hash.put("sx", bounds.left)
         hash.put("sy", bounds.top)
-        hash.put("width", bounds.width)
-        hash.put("height", bounds.height)
+        hash.put("width", bounds.width+1)
+        hash.put("height", bounds.height+1)
         hash.put("area", area)
         hash.put("length", length)
         hash.put("coherency", coherency)
@@ -185,7 +181,7 @@ class Label (
         return SQLs.hashToInsertQuery(hash, table_name)
     }
     public fun toCSV(line_id: Int, image_id: Int): String {
-        return listOf(line_id,image_id,index,bounds.left,bounds.top,bounds.width,bounds.height,area,length,coherency,direction,tiledStartX,tiledStartY).map { i ->
+        return listOf(line_id,image_id,index,bounds.left,bounds.top,bounds.width+1,bounds.height+1,area,length,coherency,direction,tiledStartX,tiledStartY).map { i ->
             "'$i'"
         }.joinToString(",")
     }

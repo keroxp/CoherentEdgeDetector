@@ -101,6 +101,17 @@ operator fun Mat.times(tgt: Mat): Mat {
     return this.mul(tgt)
 }
 
+operator fun Mat.minus(tgt: Double): Mat {
+    val ret = Mat()
+    Core.subtract(this, Scalar(tgt),ret)
+    return ret
+}
+
+operator fun Mat.unaryMinus(): Mat {
+    this *= -1.0
+    return this
+}
+
 operator fun Mat.timesAssign(tgt: Double): Unit {
     Core.multiply(this, Scalar(tgt), this)
 }

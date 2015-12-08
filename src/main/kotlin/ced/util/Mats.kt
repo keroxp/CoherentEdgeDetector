@@ -31,7 +31,7 @@ object Mats {
         Core.vconcat(rows, ret)
         return ret
     }
-    fun extend (mat: Mat, maxWidth: Int = mat.width(), maxHeight: Int = mat.height(), fillValue: Scalar): Mat {
+    fun extend (mat: Mat, maxWidth: Int = mat.width(), maxHeight: Int = mat.height(), fillValue: Scalar = Scalar(0.0)): Mat {
         val ret = Mat(maxHeight,maxWidth,mat.type(), fillValue)
         mat.iterate { y, x -> ret.put(y,x,*mat.get(y,x)) }
         return ret
@@ -40,27 +40,18 @@ object Mats {
         assert(base.height() == append.height())
         val ret = Mat.zeros(base.rows(), base.cols()+append.cols(), base.type())
         val sx = base.width()
-        base.iterate { y, x ->
-            ret.put(y,x,*base.get(y,x))
-        }
-        append.iterate { y, x ->
-            ret.put(y,sx+x,*append.get(y,x))
-        }
+        copyTo(ret,base)
+        copyTo(ret,append,sx = sx)
         return ret
     }
     fun appendBottom(base: Mat, append: Mat): Mat {
         assert(base.width() == append.width())
         val ret = Mat.zeros(base.rows()+append.rows(), base.cols(), base.type())
         val sy = base.height()
-        base.iterate { y, x ->
-            ret.put(y,x,*base.get(y,x))
-        }
-        append.iterate { y, x ->
-            ret.put(sy+y,x,*append.get(y,x))
-        }
+        copyTo(ret,base)
+        copyTo(ret,append,sy = sy)
         return ret
     }
-
     fun resize(src: Mat, size: Double, dst: Mat? = null): Mat {
         val ret = dst ?: src
         Imgproc.resize(src,ret,if (src.width() > src.height()) {
@@ -70,9 +61,29 @@ object Mats {
         }, 1.0, 1.0, Imgproc.INTER_CUBIC)
         return ret
     }
-    fun copyTo(src: Mat, copied: Mat, sx: Int, sy: Int) {
-        copied.iterate { y, x ->
-            src.put(sy+y,sx+x,*copied.get(y,x))
+    fun copyTo(dst: Mat, src: Mat, sx: Int = 0, sy: Int = 0) {
+        src.iterate { y, x ->
+            dst.put(sy+y,sx+x,*src.get(y,x))
         }
+    }
+    fun min(src1: Mat, src2: Mat): Mat {
+        val ret = Mat()
+        Core.min(src1,src2,ret)
+        return ret
+    }
+    fun min(src1: Mat, src2: Scalar): Mat {
+        val ret = Mat()
+        Core.min(src1,src2,ret)
+        return ret
+    }
+    fun abs(src1: Mat, src2: Mat): Mat {
+        val ret = Mat()
+        Core.absdiff(src1,src2,ret)
+        return ret
+    }
+    fun abs(src1: Mat, src2: Scalar): Mat {
+        val ret = Mat()
+        Core.absdiff(src1,src2,ret)
+        return ret
     }
 }

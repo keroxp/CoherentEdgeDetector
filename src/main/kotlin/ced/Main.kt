@@ -15,7 +15,11 @@ import kotlin.text.Regex
 fun main(args: Array<String>) {
     val lib = File("/usr/local/Cellar/opencv3/3.0.0/share/OpenCV/java/lib"+Core.NATIVE_LIBRARY_NAME+".dylib")
     System.load(lib.absolutePath)
-    CreateDB.exec(imageFiles("res/test"), "test")
+    val cdb = CreateDB()
+    cdb.resetDB()
+    cdb.insert(imageFiles("res/test"), "test")
+//    cdb.insert(imageFiles("res/witch"), "witch")
+//    cdb.insert(imageFiles("res/cheetah"), "cheetah")
 }
 
 fun doProc(i: Int, res: File, size: Double = 256.0) {

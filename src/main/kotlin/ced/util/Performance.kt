@@ -1,21 +1,28 @@
 package ced.util
 
 import java.util.*
+import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 object Performance {
     val results = TreeMap<String, Long>()
-    var total: Long = 0
+    val total = AtomicLong()
+    var start = 0L
+    val lock = ReentrantLock()
     fun <T> calc(tag: String, func: () -> T): T {
-        val start = System.nanoTime()
+        val s = lock.withLock {System.nanoTime()}
         val ret = func()
-        val end = System.nanoTime()
-        val diff = end - start
-        results[tag] = if (results.containsKey(tag)) {
-            results[tag]!! + diff
-        } else {
-            diff
+        val e = lock.withLock{System.nanoTime()}
+        val diff = e - s
+        lock.withLock {
+            results[tag] = if (results.containsKey(tag)) {
+                results[tag]!! + diff
+            } else {
+                diff
+            }
         }
-        total += diff
+        total.addAndGet(diff)
         return ret
     }
     enum class TimeUnit (val power: Long, val unitstr: String) {
@@ -33,16 +40,24 @@ object Performance {
         }
     }
     fun init() {
-        total = 0
-        results.clear()
+        lock.withLock {
+            start = System.nanoTime()
+            total.set(0)
+            results.clear()
+        }
     }
     fun flush(unit: TimeUnit = TimeUnit.MilliSeconds) {
-        println("total time:\t${unit.format(total)}")
-        results.entries.sortedByDescending { e ->
-            e.value
-        }.forEach { e ->
-            val perc = "${100.0*e.value/total}".substring(0,4)
-            println("${e.key}:\t${unit.format(e.value)}\t($perc%)")
+        lock.withLock {
+            println("====================")
+            println("actual time:\t${unit.format(System.nanoTime()-start)}")
+            println("total time:\t${unit.format(total.get())}")
+            results.entries.sortedByDescending { e ->
+                e.value
+            }.forEach { e ->
+                val perc = "${100.0 * e.value / total.get()}".substring(0, 4)
+                println("${e.key}:\t${unit.format(e.value)}\t($perc%)")
+            }
+            println("====================")
         }
     }
 }

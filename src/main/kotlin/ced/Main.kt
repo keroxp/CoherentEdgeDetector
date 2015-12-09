@@ -8,6 +8,11 @@ import org.opencv.core.*
 import org.opencv.imgcodecs.Imgcodecs
 import org.opencv.imgproc.Imgproc
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileReader
+import java.io.InputStreamReader
+import java.nio.charset.Charset
+import java.nio.file.Path
 import java.sql.DriverManager
 import java.util.*
 import kotlin.text.Regex
@@ -15,16 +20,26 @@ import kotlin.text.Regex
 fun main(args: Array<String>) {
     val lib = File("/usr/local/Cellar/opencv3/3.0.0/share/OpenCV/java/lib"+Core.NATIVE_LIBRARY_NAME+".dylib")
     System.load(lib.absolutePath)
-    val cdb = CreateDB()
-    cdb.resetDB()
-    cdb.insert(imageFiles("res/test"), "test")
-//    cdb.insert(imageFiles("res/witch"), "witch")
-//    cdb.insert(imageFiles("res/cheetah"), "cheetah")
+    val props = Properties()
+    FileInputStream("args.properties").use { ins ->
+        InputStreamReader(ins,"UTF-8").use { isr ->
+            props.load(isr)
+        }
+    }
+    val home = System.getProperty("user.home")
+    val path = props.getProperty("path").replaceFirst(Regex("^~"),"$home")
+    val reset = props.getProperty("reset").equals("1")
+    CreateDB().use { cdb ->
+        if (reset) cdb.resetDB()
+        File(path).listFiles { f -> f.isDirectory }?.forEach { category ->
+            cdb.insert(imageFiles(category), category.nameWithoutExtension)
+        }
+    }
 }
 
 fun doProc(i: Int, res: File, size: Double = 256.0) {
     val o = outdir("tmp/proc$i/${res.name}")
-    imageFiles(res.absolutePath).forEach { f ->
+    imageFiles(res).forEach { f ->
         when (i) {
             0 -> proc0(o,f,size)
             1 -> proc1(o,f,size)
@@ -33,8 +48,8 @@ fun doProc(i: Int, res: File, size: Double = 256.0) {
     }
 }
 
-fun imageFiles(path: String): List<File> {
-    return File(path).listFiles().filter { f -> f.extension.matches(Regex("jpe?g|png|gif")) }
+fun imageFiles(file: File): List<File> {
+    return file.listFiles().filter { f -> f.extension.matches(Regex("jpe?g|png|gif")) }
 }
 
 fun outdir(path: String, clear: Boolean = true): File {
